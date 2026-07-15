@@ -1,0 +1,51 @@
+name: Release
+
+# Publishes to npm via OIDC trusted publishing (no stored token).
+# One-time setup on npmjs.com: package @nhic/currantui-mcp → Settings →
+# Trusted publisher → GitHub Actions → this repo + "release.yml".
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  # Fresh extraction source for the bundled catalog; tests read it too
+  CURRANTUI_REPO: ${{ github.workspace }}/currantui-src
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # If nhic-lab/currantui is private, add a read-scoped token:
+      # token: ${{ secrets.CURRANTUI_READ_TOKEN }}
+      - uses: actions/checkout@v4
+        with:
+          repository: nhic-lab/currantui
+          path: currantui-src
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      # Trusted publishing needs npm >= 11.5
+      - run: npm install -g npm@latest
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm extract
+
+      - run: pnpm build
+
+      - run: pnpm test
+
+      - run: npm publish --access public
