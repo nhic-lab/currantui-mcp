@@ -1,0 +1,38 @@
+{
+  "name": "@nhic/currantui-mcp",
+  "version": "0.1.0",
+  "description": "MCP server that makes AI agents experts in CurrantUI — the NHIC design system",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "currantui-mcp": "dist/index.js"
+  },
+  "main": "dist/index.js",
+  "files": [
+    "dist",
+    "data"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@9.15.9",
+  "scripts": {
+    "build": "tsup",
+    "extract": "tsx scripts/extract.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "dev": "tsx src/index.ts",
+    "prepublishOnly": "pnpm extract && pnpm build && pnpm test"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsup": "^8.5.1",
+    "tsx": "^4.20.0",
+    "typescript": "^5.8.0",
+    "vitest": "^3.2.0"
+  }
+}
