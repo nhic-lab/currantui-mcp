@@ -3,9 +3,11 @@ export interface ComponentEntry {
   name: string
   /** File base name, e.g. "select-box-group" */
   file: string
+  /** npm package the component ships in, e.g. "@nhic/currantui-charts" */
+  package: string
   /** e.g. "@nhic/currantui/components/select-box-group" */
   importPath: string
-  /** Storybook grouping, e.g. "Forms" or "Components" */
+  /** Storybook grouping, e.g. "Forms", "Charts", or "Components" */
   category: string
   description: string
   exports: Array<string>
@@ -24,6 +26,7 @@ export interface TokenEntry {
 
 export interface UtilityEntry {
   name: string
+  package: string
   importPath: string
   source: string
 }
@@ -36,6 +39,9 @@ export interface GuidelinePage {
 export interface Catalog {
   /** Version of @nhic/currantui the catalog was extracted from */
   version: string
+  /** Every npm package covered by the catalog */
+  packages: Array<{ name: string; version: string }>
+
   components: Array<ComponentEntry>
   tokens: Array<TokenEntry>
   guidelines: Record<string, GuidelinePage>

@@ -9,12 +9,12 @@ import type {
   UtilityEntry,
 } from "./types.js"
 
-const COMPONENTS_DIR = "packages/currantui/src/components"
-const LIB_DIR = "packages/currantui/src/lib"
-const HOOKS_DIR = "packages/currantui/src/hooks"
+/** Workspace packages the catalog covers; missing ones are skipped. */
+const PACKAGE_DIRS = ["packages/currantui", "packages/charts"]
+const MAIN_PACKAGE = "@nhic/currantui"
+
 const GLOBALS_CSS = "packages/currantui/src/styles/globals.css"
 const RECIPES_DIR = "apps/storybook/recipes"
-const PACKAGE_JSON = "packages/currantui/package.json"
 
 /** Guideline topic → { source file, page title } */
 const GUIDELINE_SOURCES: Record<string, { path: string; title: string }> = {
@@ -42,6 +42,10 @@ const GUIDELINE_SOURCES: Record<string, { path: string; title: string }> = {
     path: "apps/storybook/docs/component-index.mdx",
     title: "Component Index — every component grouped by job",
   },
+  charts: {
+    path: "apps/storybook/docs/charts.mdx",
+    title: "Charts — the charting package: data shape, options, shell, export",
+  },
   overview: {
     path: "docs/overview.md",
     title: "Overview — why CurrantUI exists, scope, and non-goals",
@@ -52,11 +56,28 @@ const GUIDELINE_SOURCES: Record<string, { path: string; title: string }> = {
   },
 }
 
+interface PackageInfo {
+  dir: string
+  name: string
+  version: string
+}
+
 async function tryRead(repo: string, relPath: string): Promise<string | null> {
   try {
     return await readFile(join(repo, relPath), "utf8")
   } catch {
     return null
+  }
+}
+
+async function tryReaddir(
+  repo: string,
+  relPath: string
+): Promise<Array<string>> {
+  try {
+    return await readdir(join(repo, relPath))
+  } catch {
+    return []
   }
 }
 
@@ -100,37 +121,55 @@ function parseStoryTitle(storySource: string): string | null {
 }
 
 function parseStoryDescription(storySource: string): string | null {
-  const match = storySource.match(
-    /component:\s*\n?\s*"((?:[^"\\]|\\.)*)"/
-  )
+  const match = storySource.match(/component:\s*\n?\s*"((?:[^"\\]|\\.)*)"/)
   return match?.[1]?.replace(/\\"/g, '"') ?? null
 }
 
-async function extractComponents(repo: string): Promise<Array<ComponentEntry>> {
-  const files = await readdir(join(repo, COMPONENTS_DIR))
-  const bases = files
+async function discoverPackages(repo: string): Promise<Array<PackageInfo>> {
+  const packages: Array<PackageInfo> = []
+  for (const dir of PACKAGE_DIRS) {
+    const raw = await tryRead(repo, `${dir}/package.json`)
+    if (raw == null) continue
+    const parsed = JSON.parse(raw) as { name?: string; version?: string }
+    if (parsed.name) {
+      packages.push({ dir, name: parsed.name, version: parsed.version ?? "unknown" })
+    }
+  }
+  return packages
+}
+
+async function extractComponents(
+  repo: string,
+  pkg: PackageInfo
+): Promise<Array<ComponentEntry>> {
+  const componentsDir = `${pkg.dir}/src/components`
+  const bases = (await tryReaddir(repo, componentsDir))
     .filter((f) => f.endsWith(".tsx") && !f.endsWith(".stories.tsx"))
     .map((f) => f.replace(/\.tsx$/, ""))
     .sort()
 
   const components: Array<ComponentEntry> = []
   for (const base of bases) {
-    const source = await tryRead(repo, `${COMPONENTS_DIR}/${base}.tsx`)
+    const source = await tryRead(repo, `${componentsDir}/${base}.tsx`)
     if (source == null) continue
-    const examples = await tryRead(repo, `${COMPONENTS_DIR}/${base}.stories.tsx`)
+    const examples = await tryRead(repo, `${componentsDir}/${base}.stories.tsx`)
 
     const exports = parseExports(source)
     const pascal = pascalCase(base)
     const title = examples ? parseStoryTitle(examples) : null
-    // "Components/Forms/SelectBoxGroup" → "Forms"; "Components/Button" → "Components"
+    const fallback = pkg.name.includes("charts") ? "Charts" : "Components"
+    // "Components/Forms/SelectBoxGroup" → "Forms"; "Charts/BarChart" → "Charts"
     const segments = title?.split("/") ?? []
     const category =
-      segments.length > 2 ? (segments[segments.length - 2] ?? "Components") : "Components"
+      segments.length >= 2
+        ? (segments[segments.length - 2] ?? fallback)
+        : fallback
 
     components.push({
       name: exports.includes(pascal) ? pascal : (exports[0] ?? pascal),
       file: base,
-      importPath: `@nhic/currantui/components/${base}`,
+      package: pkg.name,
+      importPath: `${pkg.name}/components/${base}`,
       category,
       description:
         (examples ? parseStoryDescription(examples) : null) ??
@@ -196,12 +235,7 @@ async function extractGuidelines(
 
 async function extractRecipes(repo: string): Promise<Record<string, string>> {
   const recipes: Record<string, string> = {}
-  let files: Array<string>
-  try {
-    files = await readdir(join(repo, RECIPES_DIR))
-  } catch {
-    return recipes
-  }
+  const files = await tryReaddir(repo, RECIPES_DIR)
   for (const file of files.filter((f) => f.endsWith(".stories.tsx")).sort()) {
     const source = await tryRead(repo, `${RECIPES_DIR}/${file}`)
     if (source != null) recipes[file.replace(/\.stories\.tsx$/, "")] = source
@@ -209,25 +243,22 @@ async function extractRecipes(repo: string): Promise<Record<string, string>> {
   return recipes
 }
 
-async function extractUtilities(repo: string): Promise<Array<UtilityEntry>> {
+async function extractUtilities(
+  repo: string,
+  pkg: PackageInfo
+): Promise<Array<UtilityEntry>> {
   const utilities: Array<UtilityEntry> = []
-  for (const [dir, alias] of [
-    [LIB_DIR, "lib"],
-    [HOOKS_DIR, "hooks"],
-  ] as const) {
-    let files: Array<string>
-    try {
-      files = await readdir(join(repo, dir))
-    } catch {
-      continue
-    }
+  for (const alias of ["lib", "hooks"]) {
+    const dir = `${pkg.dir}/src/${alias}`
+    const files = await tryReaddir(repo, dir)
     for (const file of files.filter((f) => f.endsWith(".ts")).sort()) {
       const source = await tryRead(repo, `${dir}/${file}`)
       if (source == null) continue
       const base = file.replace(/\.ts$/, "")
       utilities.push({
         name: base,
-        importPath: `@nhic/currantui/${alias}/${base}`,
+        package: pkg.name,
+        importPath: `${pkg.name}/${alias}/${base}`,
         source,
       })
     }
@@ -237,21 +268,28 @@ async function extractUtilities(repo: string): Promise<Array<UtilityEntry>> {
 
 /** Build the full catalog from a CurrantUI repo checkout. */
 export async function extractCatalog(repo: string): Promise<Catalog> {
-  const packageJson = await tryRead(repo, PACKAGE_JSON)
-  if (packageJson == null) {
+  const packages = await discoverPackages(repo)
+  const main = packages.find((pkg) => pkg.name === MAIN_PACKAGE)
+  if (!main) {
     throw new Error(
-      `Not a CurrantUI checkout: ${repo} (missing ${PACKAGE_JSON})`
+      `Not a CurrantUI checkout: ${repo} (missing ${MAIN_PACKAGE} under packages/)`
     )
   }
-  const version =
-    (JSON.parse(packageJson) as { version?: string }).version ?? "unknown"
+
+  const components: Array<ComponentEntry> = []
+  const utilities: Array<UtilityEntry> = []
+  for (const pkg of packages) {
+    components.push(...(await extractComponents(repo, pkg)))
+    utilities.push(...(await extractUtilities(repo, pkg)))
+  }
 
   return {
-    version,
-    components: await extractComponents(repo),
+    version: main.version,
+    packages: packages.map(({ name, version }) => ({ name, version })),
+    components,
     tokens: await extractTokens(repo),
     guidelines: await extractGuidelines(repo),
     recipes: await extractRecipes(repo),
-    utilities: await extractUtilities(repo),
+    utilities,
   }
 }

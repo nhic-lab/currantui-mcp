@@ -66,6 +66,18 @@ describe("extraction", () => {
     expect(Object.keys(catalog.recipes)).toContain("rich-table")
     expect(catalog.utilities.map((u) => u.name)).toContain("date")
   })
+
+  it("covers the charts package", () => {
+    expect(catalog.packages.map((pkg) => pkg.name)).toContain(
+      "@nhic/currantui-charts"
+    )
+    const bar = catalog.components.find((c) => c.name === "BarChart")
+    expect(bar?.package).toBe("@nhic/currantui-charts")
+    expect(bar?.importPath).toBe("@nhic/currantui-charts/components/bar-chart")
+    expect(bar?.category).toBe("Charts")
+    expect(Object.keys(catalog.guidelines)).toContain("charts")
+    expect(catalog.utilities.map((u) => u.name)).toContain("use-echart")
+  })
 })
 
 describe("tools", () => {
@@ -87,6 +99,12 @@ describe("tools", () => {
     })
     const names = (result.matches as Array<{ name: string }>).map((m) => m.name)
     expect(names).toContain("ActionBar")
+
+    const charts = await callJson("search_components", { query: "bar chart" })
+    const chartNames = (charts.matches as Array<{ name: string }>).map(
+      (m) => m.name
+    )
+    expect(chartNames).toContain("BarChart")
   })
 
   it("returns full component detail with import statement", async () => {

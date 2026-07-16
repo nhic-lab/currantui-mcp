@@ -7,6 +7,7 @@ const SETUP_SNIPPET = `## Consuming CurrantUI
 
 \`\`\`bash
 pnpm add @nhic/currantui
+pnpm add @nhic/currantui-charts   # charts (Charts category), optional
 \`\`\`
 
 One CSS line in the app stylesheet:
@@ -19,6 +20,7 @@ Imports follow the file name:
 
 \`\`\`tsx
 import { Button } from "@nhic/currantui/components/button"
+import { BarChart } from "@nhic/currantui-charts/components/bar-chart"
 import { parseDate } from "@nhic/currantui/lib/date"
 \`\`\`
 
@@ -82,10 +84,13 @@ export function createServer(catalog: Catalog): McpServer {
     { name: "currantui-mcp", version: catalog.version },
     {
       instructions:
-        `Expert knowledge for CurrantUI v${catalog.version}, the NHIC React design system (@nhic/currantui). ` +
+        `Expert knowledge for CurrantUI, the NHIC React design system (${catalog.packages
+          .map((pkg) => `${pkg.name}@${pkg.version}`)
+          .join(", ")}). ` +
         "Start with list_components or search_components to find the right building block, " +
         "get_component for its full source and props, get_component_examples for copyable usage, " +
         "get_guidelines('design-standards') before writing custom UI, and get_design_tokens for theming. " +
+        "Charts live in the Charts category (get_guidelines('charts') for the data/options contract). " +
         "Never hand-roll UI an existing component covers.",
     }
   )

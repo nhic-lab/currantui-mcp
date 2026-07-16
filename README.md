@@ -2,9 +2,10 @@
 
 MCP server that makes any agentic AI application an instant expert in
 [CurrantUI](https://github.com/nhic-lab/currantui) — the NHIC React design
-system (`@nhic/currantui`). Agents get the full component catalog, real usage
-examples, design tokens, guidelines, and recipes, so generated UI code uses
-the design system instead of hand-rolling it.
+system (`@nhic/currantui`) and its charting package (`@nhic/currantui-charts`).
+Agents get the full component catalog, real usage examples, design tokens,
+guidelines, and recipes, so generated UI code uses the design system instead
+of hand-rolling it.
 
 ## Tools
 
@@ -15,7 +16,7 @@ the design system instead of hand-rolling it.
 | `get_component` | Full detail for one component — description, import statement, exports, and complete source (the authoritative reference for props and variants); also resolves utilities like `lib/date` |
 | `get_component_examples` | The component's stories source — working usage for every variant, including stateful wiring |
 | `get_design_tokens` | Semantic CSS-variable tokens with light and dark values (optional substring filter) |
-| `get_guidelines` | Docs pages: getting started, design standards, colors, typography, shell, component index, overview, architecture |
+| `get_guidelines` | Docs pages: getting started, design standards, colors, typography, shell, component index, charts, overview, architecture |
 | `get_recipe` | Copy-paste recipes for patterns the package deliberately doesn't ship (`rich-table`, `app-shell`) |
 
 ## Setup
