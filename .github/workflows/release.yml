@@ -1,10 +1,13 @@
 name: Release
 
-# Publishes to npm via OIDC trusted publishing (no stored token).
+# Deploys to npm via OIDC trusted publishing (no stored token).
+# Publishes whenever master carries a package.json version that is not on
+# the registry yet — bump the version, push (or merge), and it ships.
 # One-time setup on npmjs.com: package @nhic/currantui-mcp → Settings →
 # Trusted publisher → GitHub Actions → this repo + "release.yml".
 on:
   push:
+    branches: [master]
     tags: ["v*"]
   workflow_dispatch:
 
@@ -40,12 +43,29 @@ jobs:
       # Trusted publishing needs npm >= 11.5
       - run: npm install -g npm@latest
 
-      - run: pnpm install --frozen-lockfile
+      - name: Skip when this version is already on the registry
+        id: version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if npm view "@nhic/currantui-mcp@$VERSION" version >/dev/null 2>&1; then
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "v$VERSION is already published — nothing to deploy."
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
 
-      - run: pnpm extract
+      - if: steps.version.outputs.publish == 'true'
+        run: pnpm install --frozen-lockfile
 
-      - run: pnpm build
+      - if: steps.version.outputs.publish == 'true'
+        run: pnpm extract
 
-      - run: pnpm test
+      - if: steps.version.outputs.publish == 'true'
+        run: pnpm build
 
-      - run: npm publish --access public
+      - if: steps.version.outputs.publish == 'true'
+        run: pnpm test
+
+      - if: steps.version.outputs.publish == 'true'
+        run: npm publish --access public
