@@ -3,6 +3,12 @@
   "version": "0.2.0",
   "description": "MCP server that makes AI agents experts in CurrantUI — the NHIC design system",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nhic-lab/currantui-mcp.git"
+  },
+  "homepage": "https://github.com/nhic-lab/currantui-mcp#readme",
+  "bugs": "https://github.com/nhic-lab/currantui-mcp/issues",
   "type": "module",
   "bin": {
     "currantui-mcp": "dist/index.js"
