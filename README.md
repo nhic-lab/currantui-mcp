@@ -78,4 +78,14 @@ pnpm dev          # run the server from source
 
 Publishing runs `extract → build → test` automatically (`prepublishOnly`), so
 the shipped snapshot always matches the CurrantUI version present at publish
-time. Re-publish after significant design-system releases.
+time.
+
+## Releases are automated
+
+The `Sync catalog` workflow re-extracts from the design system's default
+branch (daily, on manual dispatch, and on a `currantui-release` dispatch ping
+from the currantui repo). When the catalog drifted it commits a patch-bumped
+refresh and publishes it in the same run — no manual commits per
+design-system release. `release.yml` still deploys on pushes to master for
+hand-made changes (new tools, server behavior), guarded by the same
+version-already-published check.

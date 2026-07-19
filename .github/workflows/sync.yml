@@ -1,0 +1,81 @@
+name: Sync catalog
+
+# Keeps the bundled catalog tracking the design system with zero manual
+# steps: re-extracts from currantui's default branch; when the catalog
+# drifted, commits a patch-bumped refresh (as the Actions bot) and publishes
+# it in the same run. Also heals any previously failed publish — the publish
+# step runs whenever package.json's version is missing from the registry.
+on:
+  schedule:
+    - cron: "17 5 * * *" # daily backstop
+  workflow_dispatch:
+  repository_dispatch:
+    types: [currantui-release] # instant sync, pinged by the currantui repo
+
+permissions:
+  contents: write
+  id-token: write
+
+concurrency:
+  group: sync-catalog
+
+env:
+  CURRANTUI_REPO: ${{ github.workspace }}/currantui-src
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+
+      # If nhic-lab/currantui is private, add a read-scoped token:
+      # token: ${{ secrets.CURRANTUI_READ_TOKEN }}
+      - uses: actions/checkout@v4
+        with:
+          repository: nhic-lab/currantui
+          path: currantui-src
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      # Trusted publishing needs npm >= 11.5
+      - run: npm install -g npm@latest
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm extract
+
+      - run: pnpm build
+
+      - run: pnpm test
+
+      - name: Commit a patch-bumped refresh when the catalog drifted
+        run: |
+          if git diff --quiet data/catalog.json; then
+            echo "Catalog already matches the design system."
+            exit 0
+          fi
+          npm version patch --no-git-tag-version
+          CURRANT=$(node -p "require('$CURRANTUI_REPO/packages/currantui/package.json').version")
+          CHARTS=$(node -p "require('$CURRANTUI_REPO/packages/charts/package.json').version" 2>/dev/null || echo "none")
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/catalog.json package.json
+          git commit -m "chore: refresh catalog for currantui $CURRANT / charts $CHARTS" -m "Automated sync: re-extracted from the design system's default branch."
+          git push
+
+      - name: Publish when this version is missing from the registry
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if npm view "@nhic/currantui-mcp@$VERSION" version >/dev/null 2>&1; then
+            echo "v$VERSION is already published — nothing to deploy."
+            exit 0
+          fi
+          npm publish --access public
