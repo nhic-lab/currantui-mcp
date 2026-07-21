@@ -84,8 +84,14 @@ time.
 
 The `Sync catalog` workflow re-extracts from the design system's default
 branch (daily, on manual dispatch, and on a `currantui-release` dispatch ping
-from the currantui repo). When the catalog drifted it commits a patch-bumped
-refresh and publishes it in the same run — no manual commits per
-design-system release. `release.yml` still deploys on pushes to master for
-hand-made changes (new tools, server behavior), guarded by the same
-version-already-published check.
+from the currantui repo). When the catalog drifted it opens a patch-bumped
+refresh PR with a GitHub-signed commit and enables auto-merge — master's
+branch protections (PR required, `verify` check, verified signatures) are
+satisfied, and the merge push triggers `release.yml`, which publishes to npm.
+When the catalog is current, the sync instead heals any missed publish.
+
+One-time setup: a `SYNC_TOKEN` repo secret (fine-grained PAT with Contents
+and Pull requests read/write — the default workflow token cannot open PRs
+that trigger required checks) and the "Allow auto-merge" repo setting.
+`release.yml` also deploys hand-made changes pushed to master, guarded by
+the same version-already-published check.
